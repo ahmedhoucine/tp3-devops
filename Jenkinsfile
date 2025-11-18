@@ -1,13 +1,13 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = 'votre-username/mon-app'
+        DOCKER_IMAGE = 'serpent/mon-app'
         KUBECONFIG = credentials('kubeconfig')
     }
     stages {
         stage('Cloner le dépôt') {
             steps {
-                git 'https://github.com/votre-username/mon-app.git'
+                git 'https://github.com/ahmedhoucine/tp3-devops'
             }
         }
         stage('Construire l\'image Docker') {
