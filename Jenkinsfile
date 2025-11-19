@@ -4,6 +4,11 @@ pipeline {
         DOCKER_IMAGE = 'ahmedhoucine0/mon-app'
     }
     stages {
+         stage('Clean Workspace') {
+      steps {
+        cleanWs()
+      }
+    }
         stage('Cloner le dépôt') {
             steps {
                 git branch: 'main',
