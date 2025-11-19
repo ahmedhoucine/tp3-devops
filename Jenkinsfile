@@ -24,53 +24,52 @@ pipeline {
         
         stage('Construire l\'image Docker') {
             steps {
-                script {
-                    sh "docker build -t ${DOCKER_IMAGE} ."
-                }
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
         
         stage('Pousser l\'image Docker') {
             steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub-creds', 
-                        passwordVariable: 'DOCKER_PASSWORD', 
-                        usernameVariable: 'DOCKER_USERNAME'
-                    )]) {
-                        sh """
-                            echo "Login à Docker Hub..."
-                            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-                            echo "Push de l'image..."
-                            docker push ${DOCKER_IMAGE}
-                        """
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds', 
+                    passwordVariable: 'DOCKER_PASSWORD', 
+                    usernameVariable: 'DOCKER_USERNAME'
+                )]) {
+                    sh """
+                        echo "Login à Docker Hub..."
+                        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+                        echo "Push de l'image..."
+                        docker push ${DOCKER_IMAGE}
+                    """
                 }
             }
         }
         
         stage('Déployer sur Kubernetes') {
             steps {
-                script {
-                    withCredentials([file(
-                        credentialsId: 'kubeconfig', 
-                        variable: 'KUBECONFIG_FILE'
-                    )]) {
-                        sh """
-                            echo "Configuration de kubectl..."
-                            export KUBECONFIG=${KUBECONFIG_FILE}
-                            echo "Vérification du cluster..."
-                            kubectl cluster-info
-                            kubectl get nodes
-                            echo "Déploiement de l'application..."
-                            kubectl apply -f deployment.yaml
-                            kubectl apply -f service.yaml
-                            echo "Vérification du déploiement..."
-                            kubectl get deployments
-                            kubectl get services
-                            kubectl get pods
-                        """
-                    }
+                withCredentials([file(
+                    credentialsId: 'kubeconfig', 
+                    variable: 'KUBECONFIG_FILE'
+                )]) {
+                    sh """
+                        echo "Installation de kubectl..."
+                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                        chmod +x kubectl
+                        mv kubectl /usr/local/bin/
+                        
+                        echo "Configuration de kubectl..."
+                        export KUBECONFIG=${KUBECONFIG_FILE}
+                        echo "Vérification du cluster..."
+                        kubectl cluster-info
+                        kubectl get nodes
+                        echo "Déploiement de l'application..."
+                        kubectl apply -f deployment.yaml
+                        kubectl apply -f service.yaml
+                        echo "Vérification du déploiement..."
+                        kubectl get deployments
+                        kubectl get services
+                        kubectl get pods
+                    """
                 }
             }
         }
