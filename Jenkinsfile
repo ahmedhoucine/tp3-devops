@@ -35,12 +35,12 @@ pipeline {
                     passwordVariable: 'DOCKER_PASSWORD', 
                     usernameVariable: 'DOCKER_USERNAME'
                 )]) {
-                    sh """
+                    sh '''
                         echo "Login à Docker Hub..."
                         docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
                         echo "Push de l'image..."
-                        docker push ${DOCKER_IMAGE}
-                    """
+                        docker push ''' + DOCKER_IMAGE + '''
+                    '''
                 }
             }
         }
@@ -51,14 +51,14 @@ pipeline {
                     credentialsId: 'kubeconfig', 
                     variable: 'KUBECONFIG_FILE'
                 )]) {
-                    sh """
+                    sh '''
                         echo "Installation de kubectl..."
                         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                         chmod +x kubectl
                         mv kubectl /usr/local/bin/
                         
                         echo "Configuration de kubectl..."
-                        export KUBECONFIG=${KUBECONFIG_FILE}
+                        export KUBECONFIG=''' + KUBECONFIG_FILE + '''
                         echo "Vérification du cluster..."
                         kubectl cluster-info
                         kubectl get nodes
@@ -69,7 +69,7 @@ pipeline {
                         kubectl get deployments
                         kubectl get services
                         kubectl get pods
-                    """
+                    '''
                 }
             }
         }
