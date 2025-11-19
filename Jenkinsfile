@@ -51,33 +51,47 @@ pipeline {
         }
         
         stage('Déployer sur Kubernetes') {
-            steps {
-                withCredentials([file(
-                    credentialsId: 'kubeconfig', 
-                    variable: 'KUBECONFIG_FILE'
-                )]) {
-                    sh '''
-                        echo "Installation de kubectl..."
-                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                        chmod +x kubectl
-                        mv kubectl /usr/local/bin/
-                        
-                        echo "Configuration de kubectl..."
-                        export KUBECONFIG=''' + KUBECONFIG_FILE + '''
-                        echo "Vérification du cluster..."
-                        kubectl cluster-info
-                        kubectl get nodes
-                        echo "Déploiement de l'application..."
-                        kubectl apply -f deployment.yaml
-                        kubectl apply -f service.yaml
-                        echo "Vérification du déploiement..."
-                        kubectl get deployments
-                        kubectl get services
-                        kubectl get pods
-                    '''
-                }
-            }
+    steps {
+        withCredentials([file(
+            credentialsId: 'kubeconfig', 
+            variable: 'KUBECONFIG_FILE'
+        )]) {
+            sh '''
+                echo "Installation de kubectl..."
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                chmod +x kubectl
+                mv kubectl /usr/local/bin/
+                
+                echo "Configuration de kubectl..."
+                export KUBECONFIG=''' + KUBECONFIG_FILE + '''
+                
+                echo "Vérification et démarrage de Minikube..."
+                # Vérifier si minikube est installé et le démarrer
+                if ! command -v minikube &> /dev/null; then
+                    echo "Installation de Minikube..."
+                    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+                    install minikube-linux-amd64 /usr/local/bin/minikube
+                fi
+                
+                # Démarrer minikube si nécessaire
+                minikube status || minikube start --force
+                
+                echo "Vérification du cluster..."
+                kubectl cluster-info
+                kubectl get nodes
+                
+                echo "Déploiement de l'application..."
+                kubectl apply -f deployment.yaml
+                kubectl apply -f service.yaml
+                
+                echo "Vérification du déploiement..."
+                kubectl get deployments
+                kubectl get services
+                kubectl get pods
+            '''
         }
+    }
+}
     }
     post {
         always {
