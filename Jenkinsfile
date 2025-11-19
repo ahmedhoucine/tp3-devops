@@ -37,7 +37,7 @@ pipeline {
                 )]) {
                     sh """
                         echo "Login à Docker Hub..."
-                        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+                        docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
                         echo "Push de l'image..."
                         docker push ${DOCKER_IMAGE}
                     """
