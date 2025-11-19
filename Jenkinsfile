@@ -51,42 +51,48 @@ pipeline {
         }
         
         stage('Déployer sur Kubernetes') {
-            steps {
-                sh '''
-                    set -e  # Arrêter en cas d'erreur
-                    
-                    echo "=== Installation de kubectl ==="
-                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                    chmod +x kubectl
-                    sudo mv kubectl /usr/local/bin/
-                    
-                    echo "=== Installation de Minikube ==="
-                    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-                    chmod +x minikube-linux-amd64
-                    sudo mv minikube-linux-amd64 /usr/local/bin/minikube
-                    
-                    echo "=== Démarrage de Minikube ==="
-                    minikube start --driver=docker --force --wait=true --wait-timeout=5m
-                    
-                    echo "=== Vérification du cluster ==="
-                    minikube status
-                    kubectl cluster-info
-                    kubectl get nodes
-                    
-                    echo "=== Déploiement de l'application ==="
-                    kubectl apply -f deployment.yaml
-                    kubectl apply -f service.yaml
-                    
-                    echo "=== Vérification du déploiement ==="
-                    kubectl get deployments,services,pods
-                    
-                    echo "=== Attente que les pods soient prêts ==="
-                    sleep 30
-                    kubectl get pods -o wide
-                    kubectl describe pods
-                '''
-            }
-        }
+    steps {
+        sh '''
+            set -e
+            echo "=== Création d'un cluster Kubernetes isolé dans Jenkins ==="
+            
+            # Installation kubectl
+            curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+            
+            # Installation Kind
+            curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+            chmod +x ./kind
+            sudo mv ./kind /usr/local/bin/kind
+            
+            echo "=== Création du cluster Kind ==="
+            # Créer un fichier de configuration pour Kind
+            cat > kind-config.yaml << EOF
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30000
+    hostPort: 30000
+EOF
+            
+            kind create cluster --config kind-config.yaml --name jenkins-cluster --wait 2m
+            
+            echo "=== Vérification du cluster ==="
+            kubectl cluster-info
+            kubectl get nodes
+            
+            echo "=== Déploiement de l'application ==="
+            kubectl apply -f deployment.yaml
+            kubectl apply -f service.yaml
+            
+            echo "=== Vérification ==="
+            kubectl get all
+        '''
+    }
+}
     }
     post {
         always {
