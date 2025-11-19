@@ -53,43 +53,44 @@ pipeline {
         stage('Déployer sur Kubernetes') {
     steps {
         sh '''
-            set -e
-            echo "=== Création d'un cluster Kubernetes isolé dans Jenkins ==="
-            
-            # Installation kubectl
-            curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+            echo "=== Installation de kubectl ==="
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
             chmod +x kubectl
             sudo mv kubectl /usr/local/bin/
             
-            # Installation Kind
-            curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
-            chmod +x ./kind
-            sudo mv ./kind /usr/local/bin/kind
+            echo "=== Configuration pour accéder à Minikube sur l'hôte ==="
+            # Obtenir l'adresse IP de l'hôte Docker
+            HOST_IP=$(ip route | grep default | awk '{print $3}' || echo "host.docker.internal")
+            echo "Adresse de l'hôte: $HOST_IP"
             
-            echo "=== Création du cluster Kind ==="
-            # Créer un fichier de configuration pour Kind
-            cat > kind-config.yaml << EOF
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  extraPortMappings:
-  - containerPort: 30000
-    hostPort: 30000
+            # Créer un kubeconfig personnalisé pointant vers l'hôte
+            cat > /tmp/kubeconfig-jenkins << EOF
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /tmp/minikube-ca.crt
+    server: https://$HOST_IP:63980
+  name: minikube
+contexts:
+- context:
+    cluster: minikube
+    user: minikube
+  name: minikube
+current-context: minikube
+kind: Config
+preferences: {}
+users:
+- name: minikube
+  user:
+    client-certificate: /tmp/minikube-client.crt
+    client-key: /tmp/minikube-client.key
 EOF
             
-            kind create cluster --config kind-config.yaml --name jenkins-cluster --wait 2m
-            
-            echo "=== Vérification du cluster ==="
-            kubectl cluster-info
-            kubectl get nodes
-            
-            echo "=== Déploiement de l'application ==="
-            kubectl apply -f deployment.yaml
-            kubectl apply -f service.yaml
+            export KUBECONFIG=/tmp/kubeconfig-jenkins
             
             echo "=== Vérification ==="
-            kubectl get all
+            kubectl cluster-info
+            kubectl get nodes
         '''
     }
 }
