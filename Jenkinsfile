@@ -68,8 +68,7 @@ pipeline {
                 echo "=== Vérification des clusters disponibles ==="
                 kubectl config get-contexts
                 
-                echo "=== Utilisation du contexte docker-desktop ==="
-                kubectl config use-context docker-desktop
+                
                 
                 echo "Vérification du cluster..."
                 kubectl cluster-info
