@@ -4,11 +4,11 @@ pipeline {
         DOCKER_IMAGE = 'ahmedhoucine0/mon-app'
     }
     stages {
-         stage('Clean Workspace') {
-      steps {
-        cleanWs()
-      }
-    }
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
         stage('Cloner le dépôt') {
             steps {
                 git branch: 'main',
@@ -44,43 +44,49 @@ pipeline {
                         echo "Login à Docker Hub..."
                         docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
                         echo "Push de l'image..."
-                        docker push ''' + DOCKER_IMAGE + '''
+                        docker push ${DOCKER_IMAGE}
                     '''
                 }
             }
         }
         
         stage('Déployer sur Kubernetes') {
-    steps {
-        sh '''
-            echo "=== Installation des outils ==="
-            # Installation kubectl
-            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-            chmod +x kubectl
-            mv kubectl /usr/local/bin/
-            
-            # Installation Minikube
-            curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-            chmod +x minikube-linux-amd64
-            mv minikube-linux-amd64 /usr/local/bin/minikube
-            
-            echo "=== Démarrage de Minikube dans Jenkins ==="
-            minikube start --driver=docker --force --wait=true --wait-timeout=5m
-            
-            echo "=== Vérification ==="
-            minikube status
-            kubectl cluster-info
-            kubectl get nodes
-            
-            echo "=== Déploiement ==="
-            kubectl apply -f deployment.yaml
-            kubectl apply -f service.yaml
-            
-            echo "=== Vérification ==="
-            kubectl get deployments,services,pods
-        '''
-    }
-}
+            steps {
+                sh '''
+                    set -e  # Arrêter en cas d'erreur
+                    
+                    echo "=== Installation de kubectl ==="
+                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                    chmod +x kubectl
+                    sudo mv kubectl /usr/local/bin/
+                    
+                    echo "=== Installation de Minikube ==="
+                    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+                    chmod +x minikube-linux-amd64
+                    sudo mv minikube-linux-amd64 /usr/local/bin/minikube
+                    
+                    echo "=== Démarrage de Minikube ==="
+                    minikube start --driver=docker --force --wait=true --wait-timeout=5m
+                    
+                    echo "=== Vérification du cluster ==="
+                    minikube status
+                    kubectl cluster-info
+                    kubectl get nodes
+                    
+                    echo "=== Déploiement de l'application ==="
+                    kubectl apply -f deployment.yaml
+                    kubectl apply -f service.yaml
+                    
+                    echo "=== Vérification du déploiement ==="
+                    kubectl get deployments,services,pods
+                    
+                    echo "=== Attente que les pods soient prêts ==="
+                    sleep 30
+                    kubectl get pods -o wide
+                    kubectl describe pods
+                '''
+            }
+        }
     }
     post {
         always {
