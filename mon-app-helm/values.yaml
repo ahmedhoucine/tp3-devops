@@ -1,0 +1,10 @@
+replicaCount: 2
+
+image:
+  repository: votre-username/mon-app
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: LoadBalancer
+  port: 3000
