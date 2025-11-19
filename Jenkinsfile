@@ -65,19 +65,16 @@ pipeline {
                 echo "Configuration de kubectl..."
                 export KUBECONFIG=''' + KUBECONFIG_FILE + '''
                 
-                echo "Vérification et démarrage de Minikube..."
-                # Vérifier si minikube est installé et le démarrer
-                if ! command -v minikube &> /dev/null; then
-                    echo "Installation de Minikube..."
-                    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-                    install minikube-linux-amd64 /usr/local/bin/minikube
-                fi
+                echo "=== Vérification des clusters disponibles ==="
+                kubectl config get-contexts
                 
-                # Démarrer minikube si nécessaire
-                minikube status || minikube start --force
+                echo "=== Utilisation du contexte docker-desktop ==="
+                kubectl config use-context docker-desktop
                 
                 echo "Vérification du cluster..."
                 kubectl cluster-info
+                
+                echo "Vérification des nodes..."
                 kubectl get nodes
                 
                 echo "Déploiement de l'application..."
@@ -88,6 +85,9 @@ pipeline {
                 kubectl get deployments
                 kubectl get services
                 kubectl get pods
+                
+                echo "Attente que les pods soient prêts..."
+                kubectl wait --for=condition=ready pod -l app=mon-app --timeout=60s
             '''
         }
     }
